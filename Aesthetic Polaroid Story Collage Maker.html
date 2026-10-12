@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aesthetic Polaroid Story & Collage Maker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2canvas for downloading the collage image -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Poppins:wght@300;400;500;600&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #09090b;
+            color: #f4f4f5;
+            overflow-x: hidden;
+        }
+        
+        .serif-font {
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* 9:16 Story Aspect Ratio Canvas Container */
+        #collage-canvas {
+            width: 380px;
+            height: 675px;
+            position: relative;
+            background: linear-gradient(135deg, #18181b 0%, #27272a 100%);
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            border-radius: 20px;
+        }
+
+        /* Draggable Polaroid Frames */
+        .polaroid-frame {
+            position: absolute;
+            background: #ffffff;
+            padding: 8px 8px 24px 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+            cursor: grab;
+            user-select: none;
+            transition: box-shadow 0.2s ease, transform 0.1s ease;
+            touch-action: none;
+            border-radius: 3px;
+        }
+        .polaroid-frame:active {
+            cursor: grabbing;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.5);
+            z-index: 100 !important;
+            transform: scale(1.02);
+        }
+
+        .photo-slot {
+            width: 100%;
+            height: 115px;
+            background: #f1f5f9;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .photo-slot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Floating Particle Animations */
+        @keyframes floatUp {
+            0% { transform: translateY(0px) scale(0.8) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-700px) scale(1.2) rotate(360deg); opacity: 0; }
+        }
+
+        .floating-particle {
+            position: absolute;
+            bottom: 0;
+            animation: floatUp linear infinite;
+            pointer-events: none;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #18181b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen py-6 px-4 flex flex-col items-center justify-between">
+
+    <header class="text-center mb-4 max-w-xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-800/80 border border-zinc-700/60 text-xs text-pink-400 mb-2">
+            <span class="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></span>
+            Vertical 9:16 Story Template Creator
+        </div>
+        <h1 class="text-2xl md:text-3xl font-bold tracking-tight serif-font text-zinc-100">Aesthetic Polaroid Collage</h1>
+        <p class="text-xs text-zinc-400 mt-1">Design exquisite photo collages, customize themes, add particle effects & download instantly.</p>
+    </header>
+
+    <main class="flex flex-col lg:flex-row gap-8 items-center justify-center w-full max-w-6xl my-auto">
+        
+        <!-- CANVAS WORKSPACE -->
+        <div class="flex flex-col items-center">
+            <div id="collage-canvas" class="border border-zinc-700/80">
+                
+                <!-- Background Organic Shapes & Line Art Overlay -->
+                <div id="bg-shapes" class="absolute inset-0 opacity-25 pointer-events-none transition-colors duration-500">
+                    <svg class="w-full h-full text-zinc-300" viewBox="0 0 380 675" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M-50 120C60 60 120 220 220 170C320 120 380 280 430 220" stroke="currentColor" stroke-width="2"/>
+                        <path d="M0 480C110 540 160 420 270 510 C375 600 400 420 480 480" stroke="currentColor" stroke-width="1.5"/>
+                        <!-- Hand-drawn Daisy Flower on Bottom Left -->
+                        <g transform="translate(35, 540) scale(0.85)" stroke="currentColor" stroke-width="1.5" fill="none">
+                            <circle cx="0" cy="0" r="9"/>
+                            <path d="M0 -9 C5 -22, 16 -22, 0 -28 C-16 -22, -5 -22, 0 -9 Z"/>
+                            <path d="M0 9 C5 22, 16 22, 0 28 C-16 22, -5 22, 0 9 Z"/>
+                            <path d="M-9 0 C-22 -5, -22 -16, -28 0 C-22 16, -22 5, -9 0 Z"/>
+                            <path d="M9 0 C22 -5, 22 -16, 28 0 C22 16, 22 5, 9 0 Z"/>
+                            <path d="M0 9 C 10 35, 30 45, 50 40" stroke="currentColor" stroke-width="1.2"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- Particle Effects Container -->
+                <div id="particle-container" class="absolute inset-0 overflow-hidden pointer-events-none z-30"></div>
+
+                <!-- Draggable Frames Container -->
+                <div id="frames-container" class="absolute inset-0 z-20"></div>
+
+                <!-- Tagline Area -->
+                <div class="absolute bottom-2 left-3 right-3 z-40 text-center px-3 py-1.5 bg-black/30 backdrop-blur-xs rounded-xl border border-white/10">
+                    <p id="tagline-text" class="text-[9.55px] italic leading-snug text-zinc-200 serif-font">
+                        "Love is not about finding someone to live with, but finding the one you cannot live without. It is a quiet promise made in a world of noise, growing stronger with every shared glance and whispered dream. Together, two distinct journeys weave into one timeless adventure."
+                    </p>
+                </div>
+            </div>
+
+            <!-- Download Button -->
+            <button id="download-btn" class="mt-5 w-full max-w-[380px] bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 text-white font-medium py-3.5 px-6 rounded-xl shadow-lg shadow-purple-900/30 transition-all duration-200 flex items-center justify-center gap-2.5 text-sm tracking-wide">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download photo collage
+            </button>
+        </div>
+
+        <!-- CONTROL PANEL -->
+        <div class="bg-zinc-900/90 backdrop-blur-md border border-zinc-800/80 p-6 rounded-2xl w-full max-w-md shadow-2xl flex flex-col gap-5">
+            <h2 class="text-base font-semibold text-zinc-200 border-b border-zinc-800 pb-3 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                Collage Customization Studio
+            </h2>
+
+            <!-- Frame Count Selection (2 to 20) -->
+            <div>
+                <label class="block text-xs font-medium text-zinc-300 mb-1.5 flex justify-between">
+                    <span>Number of Photo Frames</span>
+                    <span id="frame-count-display" class="text-pink-400 font-bold">2 Frames</span>
+                </label>
+                <select id="frame-count-select" class="w-full bg-zinc-800/90 border border-zinc-700/80 rounded-xl p-3 text-sm text-zinc-200 focus:ring-2 focus:ring-pink-500 focus:outline-none transition">
+                    <option value="2">2 Photos (Classic Polaroid Duo)</option>
+                    <option value="3">3 Photos Layout</option>
+                    <option value="4">4 Photos Grid</option>
+                    <option value="5">5 Photos Story</option>
+                    <option value="6">6 Photos Grid</option>
+                    <option value="8">8 Photos Grid</option>
+                    <option value="10">10 Photos Grid</option>
+                    <option value="12">12 Photos Grid</option>
+                    <option value="15">15 Photos Grid</option>
+                    <option value="20">20 Photos Collage</option>
+                </select>
+            </div>
+
+            <!-- Theme & Background Selection -->
+            <div>
+                <label class="block text-xs font-medium text-zinc-300 mb-1.5">Design & Color Theme</label>
+                <select id="theme-select" class="w-full bg-zinc-800/90 border border-zinc-700/80 rounded-xl p-3 text-sm text-zinc-200 focus:ring-2 focus:ring-pink-500 focus:outline-none transition">
+                    <option value="monochrome">Monochrome / Slate Gray (Aesthetic)</option>
+                    <option value="love-pink">Love Theme (Soft Rose & Blush)</option>
+                    <option value="sunset">Sunset Warmth (Amber & Peach)</option>
+                    <option value="emerald">Midnight Emerald & Gold</option>
+                    <option value="lavender">Dreamy Lavender & Lilac</option>
+                </select>
+            </div>
+
+            <!-- Interactive Effects Selection -->
+            <div>
+                <label class="block text-xs font-medium text-zinc-300 mb-1.5">Particle & Animation Effects</label>
+                <select id="effect-select" class="w-full bg-zinc-800/90 border border-zinc-700/80 rounded-xl p-3 text-sm text-zinc-200 focus:ring-2 focus:ring-pink-500 focus:outline-none transition">
+                    <option value="hearts">❤️🩷🧡💛💚💙🩵💜🤎🩶🤍🖤 All Hearts Mix</option>
+                    <option value="sparkles">✨ Sparkles & Stars</option>
+                    <option value="rose">🌹 Falling Rose Petals</option>
+                    <option value="snow">❄️ Soft Winter Snow</option>
+                    <option value="none">None (Static)</option>
+                </select>
+            </div>
+
+            <!-- Custom Tagline Editor -->
+            <div>
+                <label class="block text-xs font-medium text-zinc-300 mb-1.5">Bottom Tagline Quote</label>
+                <textarea id="tagline-input" rows="3" class="w-full bg-zinc-800/90 border border-zinc-700/80 rounded-xl p-2.5 text-xs text-zinc-200 focus:ring-2 focus:ring-pink-500 focus:outline-none transition resize-none">Love is not about finding someone to live with, but finding the one you cannot live without. It is a quiet promise made in a world of noise, growing stronger with every shared glance and whispered dream. Together, two distinct journeys weave into one timeless adventure.</textarea>
+            </div>
+
+            <!-- Instruction Hint -->
+            <div class="text-[11px] text-zinc-400 bg-zinc-800/40 p-3 rounded-xl border border-zinc-700/40 flex gap-2.5 items-start">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-pink-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span><strong>Tip:</strong> Click <span class="text-pink-300">Upload Photo</span> on any polaroid frame to load your gallery pictures. You can freely drag and reposition frames anywhere on the canvas!</span>
+            </div>
+        </div>
+    </main>
+
+    <footer class="mt-6 text-center text-xs text-zinc-500">
+        <p>&copy; 2026 Aesthetic Polaroid Story Collage Maker. Crafted with love & modern web design.</p>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('collage-canvas');
+        const framesContainer = document.getElementById('frames-container');
+        const frameCountSelect = document.getElementById('frame-count-select');
+        const frameCountDisplay = document.getElementById('frame-count-display');
+        const themeSelect = document.getElementById('theme-select');
+        const effectSelect = document.getElementById('effect-select');
+        const particleContainer = document.getElementById('particle-container');
+        const downloadBtn = document.getElementById('download-btn');
+        const taglineInput = document.getElementById('tagline-input');
+        const taglineText = document.getElementById('tagline-text');
+
+        // Theme Background Gradients
+        const themes = {
+            'monochrome': 'linear-gradient(135deg, #18181b 0%, #27272a 100%)',
+            'love-pink': 'linear-gradient(135deg, #4c1d2c 0%, #22121a 100%)',
+            'sunset': 'linear-gradient(135deg, #431f18 0%, #20141b 100%)',
+            'emerald': 'linear-gradient(135deg, #0f2c22 0%, #111816 100%)',
+            'lavender': 'linear-gradient(135deg, #2c1d3f 0%, #161222 100%)'
+        };
+
+        // Sync tagline text live
+        taglineInput.addEventListener('input', (e) => {
+            taglineText.textContent = e.target.value;
+        });
+
+        // Generate Polaroid Frames dynamically based on user count (2 to 20)
+        function generateFrames(count) {
+            framesContainer.innerHTML = '';
+            frameCountDisplay.textContent = `${count} Frame${count > 1 ? 's' : ''}`;
+
+            for (let i = 0; i < count; i++) {
+                const frame = document.createElement('div');
+                frame.className = 'polaroid-frame';
+                
+                // Adaptive sizes based on count
+                let width = count <= 3 ? 145 : (count <= 8 ? 105 : 85);
+                let height = width * 1.3;
+                
+                let left, top, rotate;
+
+                if (count === 2) {
+                    // Exact diagonal overlap style matching initial prompt description
+                    if (i === 0) { left = 45; top = 60; width = 160; height = 200; rotate = -5; }
+                    if (i === 1) { left = 165; top = 200; width = 160; height = 200; rotate = 6; }
+                } else {
+                    // Intelligent scatter arrangement for multi-frames
+                    const col = i % 3;
+                    const row = Math.floor(i / 3);
+                    left = 25 + (col * 115) + (Math.random() * 15 - 7);
+                    top = 20 + (row * 125) + (Math.random() * 15 - 7);
+                    rotate = (Math.random() * 16 - 8);
+                }
+
+                frame.style.width = `${width}px`;
+                frame.style.left = `${Math.max(10, Math.min(380 - width - 10, left))}px`;
+                frame.style.top = `${Math.max(10, Math.min(480 - height, top))}px`;
+                frame.style.transform = `rotate(${rotate}deg)`;
+                frame.style.zIndex = i + 10;
+
+                frame.innerHTML = `
+                    <div class="photo-slot" style="height: ${height - 35}px;">
+                        <div class="flex flex-col items-center justify-center p-2 text-center absolute inset-0 bg-zinc-100 hover:bg-zinc-200 transition cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-zinc-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span class="text-[10px] font-medium text-zinc-600">Upload Photo</span>
+                        </div>
+                        <input type="file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer file-input z-10" title="Upload Photo">
+                    </div>
+                    <div class="mt-2 flex justify-between items-center px-1">
+                        <span class="text-[9px] text-zinc-500 serif-font font-semibold">#${i+1}</span>
+                        <span class="text-xs">❤️</span>
+                    </div>
+                `;
+
+                // Handle Image Upload & Whole Picture Fill
+                const fileInput = frame.querySelector('.file-input');
+                const photoSlot = frame.querySelector('.photo-slot');
+
+                fileInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            photoSlot.innerHTML = `<img src="${event.target.result}" alt="Uploaded Photo" class="w-full h-full object-cover">`;
+                        }
+                        reader.readAsDataURL(file);
+                    }
+                });
+
+                makeDraggable(frame);
+                framesContainer.appendChild(frame);
+            }
+        }
+
+        // Draggable Functionality for Touch and Mouse
+        function makeDraggable(elmnt) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            
+            elmnt.onmousedown = dragMouseDown;
+            elmnt.ontouchstart = dragMouseDown;
+
+            function dragMouseDown(e) {
+                e = e || window.event;
+                if (e.target.tagName === 'INPUT') return;
+                
+                e.preventDefault();
+                const clientX = e.clientX || e.touches[0].clientX;
+                const clientY = e.clientY || e.touches[0].clientY;
+
+                pos3 = clientX;
+                pos4 = clientY;
+                
+                document.onmouseup = closeDragElement;
+                document.ontouchend = closeDragElement;
+                document.onmousemove = elementDrag;
+                document.ontouchmove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                e = e || window.event;
+                e.preventDefault();
+                const clientX = e.clientX || e.touches[0].clientX;
+                const clientY = e.clientY || e.touches[0].clientY;
+
+                pos1 = pos3 - clientX;
+                pos2 = pos4 - clientY;
+                pos3 = clientX;
+                pos4 = clientY;
+
+                elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+                elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.ontouchend = null;
+                document.onmousemove = null;
+                document.ontouchmove = null;
+            }
+        }
+
+        // Particle Effects Generator (Hearts, Sparkles, Roses, Snow)
+        let particleInterval;
+        function startEffects(effectType) {
+            clearInterval(particleInterval);
+            particleContainer.innerHTML = '';
+            if (effectType === 'none') return;
+
+            const symbols = {
+                'hearts': ['❤️', '🩷', '🧡', '💛', '💚', '💙', '🩵', '💜', '🤎', '🩶', '🤍', '🖤'],
+                'sparkles': ['✨', '⭐', '🌟', '💫', '⚡'],
+                'rose': ['🌹', '🌸', '💮', '🌷'],
+                'snow': ['❄️', '❅', '❆', '•']
+            }[effectType] || ['❤️'];
+
+            particleInterval = setInterval(() => {
+                const p = document.createElement('div');
+                p.className = 'floating-particle';
+                p.style.left = Math.random() * 360 + 'px';
+                p.style.fontSize = (Math.random() * 10 + 12) + 'px';
+                p.style.animationDuration = (Math.random() * 2.5 + 3.5) + 's';
+                p.innerText = symbols[Math.floor(Math.random() * symbols.length)];
+                particleContainer.appendChild(p);
+
+                setTimeout(() => p.remove(), 6000);
+            }, 280);
+        }
+
+        // Event Listeners for Controls
+        frameCountSelect.addEventListener('change', (e) => {
+            generateFrames(parseInt(e.target.value));
+        });
+
+        themeSelect.addEventListener('change', (e) => {
+            canvas.style.background = themes[e.target.value];
+        });
+
+        effectSelect.addEventListener('change', (e) => {
+            startEffects(e.target.value);
+        });
+
+        // Download Collage using html2canvas
+        downloadBtn.addEventListener('click', () => {
+            downloadBtn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                Generating Collage...
+            `;
+            downloadBtn.disabled = true;
+
+            setTimeout(() => {
+                html2canvas(canvas, { scale: 3, useCORS: true, backgroundColor: null }).then(canvasImage => {
+                    const link = document.createElement('a');
+                    link.download = 'polaroid-aesthetic-collage.png';
+                    link.href = canvasImage.toDataURL('image/png');
+                    link.click();
+
+                    downloadBtn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        Download photo collage
+                    `;
+                    downloadBtn.disabled = false;
+                }).catch(err => {
+                    console.error(err);
+                    downloadBtn.innerHTML = `Download photo collage`;
+                    downloadBtn.disabled = false;
+                });
+            }, 300);
+        });
+
+        // Initialize default view (2 frames with heart effects)
+        generateFrames(2);
+        startEffects('hearts');
+    </script>
+</body>
+</html>
